@@ -1,7 +1,7 @@
 # Web server
 
 Muti-threading web/api server  
-Support resuming download file
+Support upload/download file
 
 ## Feature
 Written in C/C++11.  
