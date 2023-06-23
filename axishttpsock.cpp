@@ -13,14 +13,14 @@ unsigned int HTTPServerNetwork::MAXMSG = 100000;
 unsigned int HTTPServerNetwork::MAXLISTEN = 128;
 unsigned int HTTPServerNetwork::MAXCONNECTION = 1024;
 unsigned int HTTPServerNetwork::MAXQUEUE=100000;
-unsigned int HTTPServerNetwork::PINGTIMEOUT = 3000;
+unsigned int HTTPServerNetwork::PINGTIMEOUT = 10000;
 
 bool inithttpqueue(HTTPQueue* p, unsigned int size);
 int httpenqueue(HTTPQueue* h, HTTPNetwork value);
 HTTPNetwork httpdequeue(HTTPQueue* h);
 void destroyhttpqueue(HTTPQueue* h);
 
-SOCKET inithttpserver(int port,unsigned int maxbuffer,unsigned int maxlisten)
+SOCKET inithttpserver(int port, unsigned int maxbuffer, unsigned int maxlisten)
 {
 	struct sockaddr_in local;
 	SOCKET sock;
@@ -40,12 +40,12 @@ SOCKET inithttpserver(int port,unsigned int maxbuffer,unsigned int maxlisten)
 #if defined(_MSC_VER)    
 	if (sock == INVALID_SOCKET) return INVALID_SOCKET;
 #else
-	if (sock<0) return -1;
+	if (sock < 0) return -1;
 #endif
 	int enable = 1;
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(int));
 #if defined(__APPLE__)
-	setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE , (const char*)&enable, sizeof(int));
+	setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, (const char*)&enable, sizeof(int));
 #endif
 	int msgSize = maxbuffer;
 	setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char*)&msgSize, sizeof(msgSize));
@@ -94,15 +94,15 @@ void destroyhttpconfig(HTTPNetworkConfig c)
 	FREEMEM(c);
 }
 
-HTTPNetwork inithttpnetwork(SOCKET csocket,void* premem,unsigned int size)
-{	
+HTTPNetwork inithttpnetwork(SOCKET csocket, void* premem, unsigned int size)
+{
 	HTTPNetwork n = (HTTPNetwork)ALLOCMEM(sizeof(struct HTTPNetworkS));
 	if (n == NULL) return NULL;
-	n->buffer=(char*)premem;
+	n->buffer = (char*)premem;
 	n->bufferIndex = 0;
 	n->bufferSize = size;
 	n->socket = csocket;
-	n->lastping=time(NULL);
+	n->lastping = time(NULL);
 	n->sendmsg = NULL;
 	n->sendSize = n->sendIndex = 0;
 	n->state = HTTPSTATEINIT;
@@ -138,15 +138,15 @@ int defaulthttpotherfunc(HTTPNetwork msg)
 	return HTTPMSGEND;
 }
 
-int httpsend(HTTPNetwork n,unsigned int pingtimeout)
+int httpsend(HTTPNetwork n, unsigned int pingtimeout)
 {
 	int r = 0;
 	TIME now = time(NULL);
 	//no 'dontwait' will block if connection lost 
-	int rets = send(n->socket, n->sendmsg, n->sendIndex, MSG_NOSIGNAL | MSG_DONTWAIT); 
+	int rets = send(n->socket, n->sendmsg, n->sendIndex, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (rets <= 0)
 	{
-		if ((unsigned int)(now-n->lastping) < pingtimeout) {
+		if ((unsigned int)(now - n->lastping) < pingtimeout) {
 			r = HTTPMSGCONTINUE;
 		}
 		else {
@@ -161,7 +161,8 @@ int httpsend(HTTPNetwork n,unsigned int pingtimeout)
 			if (rets >= v)
 			{
 				CPYMEM(n->sendmsg, &n->sendmsg[rets], v);
-			} else {			//Double copy
+			}
+			else {			//Double copy
 				CPYMEM(n->sendmsg, &n->sendmsg[rets], rets);
 				CPYMEM(&n->sendmsg[rets], &n->sendmsg[rets * 2], v - rets);
 			}
@@ -180,7 +181,7 @@ void endhttpproc(HTTPProcThread p)
 {
 	HTTPNetworkConfig config = p->config;
 	HTTPNetwork n = p->n;
-	if ((n->state != HTTPSTATEINIT) && (n->data!=NULL)) {
+	if ((n->state != HTTPSTATEINIT) && (n->data != NULL)) {
 		n->state = HTTPSTATEDESTROY;
 		config->msgFunc(n);
 	}
@@ -202,22 +203,22 @@ void* httpprocthread(void* arg)
 	fd_set socks;
 	struct timeval timeout;
 	HTTPProcThread c = (HTTPProcThread)arg;
-	int retval,readsocks,r;
-	HTTPNetwork n=c->n;
+	int retval, readsocks, r;
+	HTTPNetwork n = c->n;
 	HTTPNetworkConfig config = c->config;
 	HTTPMsgFunc* msgfunc = config->msgFunc;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 0;
 	r = HTTPMSGCONTINUE;
-	while ((r != HTTPMSGEND) && (!config->exitflag) && (time(NULL)-n->lastping<config->pingtimeout)) {
+	while ((r != HTTPMSGEND) && (!config->exitflag) && (time(NULL) - n->lastping < config->pingtimeout)) {
 		FD_ZERO(&socks);
 		FD_SET(n->socket, &socks);
 		readsocks = select(FD_SETSIZE, &socks, (fd_set*)0, (fd_set*)0, &timeout);
-		retval = (readsocks>0)?recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex,0):0;
+		retval = (readsocks > 0) ? recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex, 0) : 0;
 		if (retval >= 0)		//in case retval==0 or -1
 		{
 			if (retval > 0) {
-				n->bufferIndex += retval;				
+				n->bufferIndex += retval;
 				if (n->bufferIndex == n->bufferSize) {			//expand
 					if (n->bufferSize >= config->maxmsgsize)	//maximum check
 					{
@@ -268,46 +269,46 @@ void* httplistenthread(void* arg)
 {
 	HTTPListenThread c = (HTTPListenThread)arg;
 	HTTPNetworkConfig config = c->config;
-	SOCKET server=c->server;
+	SOCKET server = c->server;
 	HTTPNetwork n;
 	SOCKET csocket;
-	int readsocks;	
+	int readsocks;
 	fd_set socks;
 	struct timeval timeout;
 	struct sockaddr client;
-	int size=sizeof(struct sockaddr);
+	int size = sizeof(struct sockaddr);
 	//set the timeout to 1 millisec. make the cpu usage too high 
-	timeout.tv_sec=0;                    
-	timeout.tv_usec=0;					
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
 
 	//22/06/2023 pre allocate mem for fixing recv bug in Mac OS X
-	#define PREMEMSIZE 1000
-	void** premem=(void**)ALLOCMEM(PREMEMSIZE*sizeof(void*));
-	int prememi=PREMEMSIZE;
+#define PREMEMSIZE 1000
+	void** premem = (void**)ALLOCMEM(PREMEMSIZE * sizeof(void*));
+	int prememi = PREMEMSIZE;
 
 	c->lasttime = time(NULL);
 	while (!config->exitflag) {
-		if (prememi==PREMEMSIZE)
+		if (prememi == PREMEMSIZE)
 		{
-			for (int i=0;i<PREMEMSIZE;i++)
-				premem[i]=(void*)ALLOCMEM(config->msgsize);
-			prememi=0;
+			for (int i = 0; i < PREMEMSIZE; i++)
+				premem[i] = (void*)ALLOCMEM(config->msgsize);
+			prememi = 0;
 		}
 		TIME now = time(NULL);
 		//get current tick for process
-		unsigned int d=(unsigned int)(now-c->lasttime);		
-		if (d>c->tick) c->tick=d; 
+		unsigned int d = (unsigned int)(now - c->lasttime);
+		if (d > c->tick) c->tick = d;
 		c->lasttime = now;
 		//****************** queue ****************************
-		if (config->queue.entries>0)
+		if (config->queue.entries > 0)
 		{
-	#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 			pthread_mutex_lock(&config->mutex);
-	#endif
+#endif
 			if (config->numprocthread < config->maxconnection) {
 				HTTPNetwork dn = httpdequeue(&config->queue);
 				config->numprocthread++;
-	#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 				pthread_t workerThreadId;
 				pthread_attr_t tattr;
 				sched_param schedparam;
@@ -324,39 +325,40 @@ void* httplistenthread(void* arg)
 				else {
 					pthread_detach(workerThreadId);
 				}
-	#else
-	#endif
+#else
+#endif
 			}
-	#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 			pthread_mutex_unlock(&config->mutex);
-	#endif
-		} else {
-		//****************** accept *****************************
-		FD_ZERO(&socks);
-		FD_SET(server, &socks);
-	#if defined(_MSC_VER) && !defined(__MINGW32__)
-	#pragma warning(push, 0)
-	#endif
-		readsocks=select((server+1), &socks, (fd_set *) 0, (fd_set *) 0, &timeout);	  //select the highest socket
-	#if defined(_MSC_VER) && !defined(__MINGW32__)
-	#pragma warning( pop )
-	#endif
-		if (readsocks > 0)
-		{
-			size = sizeof(struct sockaddr);
-		#if defined(_MSC_VER) || defined(__MINGW32__)
-			csocket=accept(server,(struct sockaddr *)&client, &size);
-		#else
-			csocket=accept(server,(struct sockaddr *)&client, (socklen_t*)&size);
-		#endif
-			if (csocket != -1) {		//11/10/2019 sometimes return -1
-					n = inithttpnetwork(csocket,premem[prememi],config->msgsize);	
+#endif
+		}
+		else {
+			//****************** accept *****************************
+			FD_ZERO(&socks);
+			FD_SET(server, &socks);
+#if defined(_MSC_VER) && !defined(__MINGW32__)
+#pragma warning(push, 0)
+#endif
+			readsocks = select((server + 1), &socks, (fd_set*)0, (fd_set*)0, &timeout);	  //select the highest socket
+#if defined(_MSC_VER) && !defined(__MINGW32__)
+#pragma warning( pop )
+#endif
+			if (readsocks > 0)
+			{
+				size = sizeof(struct sockaddr);
+#if defined(_MSC_VER) || defined(__MINGW32__)
+				csocket = accept(server, (struct sockaddr*)&client, &size);
+#else
+				csocket = accept(server, (struct sockaddr*)&client, (socklen_t*)&size);
+#endif
+				if (csocket != -1) {		//11/10/2019 sometimes return -1
+					n = inithttpnetwork(csocket, premem[prememi], config->msgsize);
 					prememi++;
 					if (n != NULL) {
 						n->addr = client;
-		#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 						pthread_mutex_lock(&config->mutex);
-		#endif
+#endif
 						if (config->numprocthread >= config->maxconnection) {
 							int i = httpenqueue(&config->queue, n);
 							if (i == -1) {
@@ -365,7 +367,7 @@ void* httplistenthread(void* arg)
 						}
 						else {
 							config->numprocthread++;
-		#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 							pthread_t workerThreadId;
 							pthread_attr_t tattr;
 							sched_param schedparam;
@@ -382,15 +384,15 @@ void* httplistenthread(void* arg)
 							else {
 								pthread_detach(workerThreadId);
 							}
-		#else
+#else
 							HTTPProcThread p = inithttpproc(n, config);
 							std::thread proc(httpprocthread, (void*)p);
 							proc.detach();
-		#endif
+#endif
 						}
-		#if defined(_PTHREAD)
+#if defined(_PTHREAD)
 						pthread_mutex_unlock(&config->mutex);
-		#endif
+#endif
 					}
 				}
 			}
@@ -426,7 +428,7 @@ void HTTPServerNetwork::setPath(const char* path)
 {
 	if (config == NULL) return;
 }
- 
+
 void HTTPServerNetwork::begin()
 {
 	if (config == NULL) return;
@@ -454,7 +456,7 @@ HTTPServerNetwork::~HTTPServerNetwork()
 	destroyhttpconfig(config);
 }
 
-size_t httpurlencode(const char* pSrc,char* ret,size_t rlen)
+size_t httpurlencode(const char* pSrc, char* ret, size_t rlen)
 {	//maybe larger than the source
 	const char SAFE[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
@@ -515,35 +517,9 @@ void httpurldecode(char* pSrc)
 	*pEnd = 0;
 }
 
-bool httpiscomplete(HTTPNetwork n)
-{	//TODO:
-	if (n->bufferSize > 2) {
-		if (strstr(n->buffer, "POST /") != NULL)
-		{   //no end told
-			char* p = strstr(n->buffer, "\r\n\r\n");
-			if (p == NULL) return false;
-			size_t len;
-			bool res = httpgetcontentlength(n, &len);
-			if (res) {
-				size_t l=(p - n->buffer)+4;
-				if (n->bufferSize - l >= len) return true;
-				return false;
-			}
-			return true;
-		} else {
-			//end with \r\n\r\n
-			if ((n->buffer[n->bufferSize - 2] == '\r') && (n->buffer[n->bufferSize - 1] == '\n')) {
-				n->buffer[n->bufferSize - 2] = 0;
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 bool httpisheadercomplete(HTTPNetwork n)
 {
-	if (n->bufferSize > 2) {
+	if (n->bufferIndex > 4) {
 		char* p = strstr(n->buffer, "\r\n\r\n");
 		if (p == NULL) return false;
 		return true;
@@ -551,12 +527,63 @@ bool httpisheadercomplete(HTTPNetwork n)
 	return false;
 }
 
+void httpgetclientaddr(HTTPNetwork n, char* out)
+{
+	struct sockaddr s = n->addr;
+	if (s.sa_family == AF_INET) {
+		sprintf(out, "%u.%u.%u.%u:%u", s.sa_data[2] & 0xFF, s.sa_data[3] & 0xFF, s.sa_data[4] & 0xFF, s.sa_data[5] & 0xFF, (s.sa_data[0] & 0xFF) | ((s.sa_data[1] & 0xFF) << 8));
+	}
+	else { //PF_PACKET
+		sprintf(out, "");
+	}
+}
+
+bool httpgetfilename(char* buffer, char* filename, size_t len)
+{
+	char* s = strstr(buffer, "filename=\"");
+	if (s == NULL) return false;
+	s += 10;
+	char* e = strstr(s, "\"");
+	if (e == NULL) return false;
+	if (len < e - s + 1) return false;
+	CPYMEM(filename, s, e - s);
+	filename[e - s] = 0;
+	return true;
+}
+
+void httpshiftbuffer(HTTPNetwork n, size_t len)
+{
+	size_t v = n->bufferIndex - len;
+	if (len >= v)
+	{
+		CPYMEM(n->buffer, &n->buffer[len], v);
+	}
+	else {			//Double copy
+		CPYMEM(n->buffer, &n->buffer[len], len);
+		CPYMEM(&n->buffer[len], &n->buffer[len * 2], v - len);
+	}
+	n->bufferIndex -= len;
+	n->buffer[n->bufferIndex] = 0;
+}
+
+bool httpexpandbuffer(HTTPNetwork msg, size_t len)
+{
+	char* tmp = (char*)ALLOCMEM(len + 2000);
+	if (tmp == NULL) return false;
+	CPYMEM(tmp, msg->buffer, msg->bufferIndex);
+	tmp[msg->bufferIndex] = 0;
+	msg->bufferSize = len;
+	FREEMEM(msg->buffer);
+	msg->buffer = tmp;
+	return true;
+}
+
 int httpgetmethod(HTTPNetwork n)
 {
 	if (strstr(n->buffer, "GET /") != NULL) return HTTPMETHODGET;
 	if (strstr(n->buffer, "POST /") != NULL) return HTTPMETHODPOST;
 	if (strstr(n->buffer, "PATCH /") != NULL) return HTTPMETHODPATCH;
-	if (strstr(n->buffer, "DELETE /")!=NULL) return HTTPMETHODDELETE;
+	if (strstr(n->buffer, "DELETE /") != NULL) return HTTPMETHODDELETE;
 	return -1;
 }
 
@@ -625,13 +652,13 @@ bool httpgetcontenttype(HTTPNetwork n, char* type, char* boundary, size_t len)
 	return true;
 }
 
-bool httpgetpath(HTTPNetwork n, char* path,size_t len)
+bool httpgetpath(HTTPNetwork n, char* path, size_t len)
 {
-	*path=0;
-	char *p = strstr(n->buffer, " /");
-	if ((p == NULL) || (p-n->buffer>6) || (p-n->buffer<3)) return false;
+	*path = 0;
+	char* p = strstr(n->buffer, " /");
+	if ((p == NULL) || (p - n->buffer > 6) || (p - n->buffer < 3)) return false;
 	p += 2;
-	char* p1 = strchr(p, ' '); 
+	char* p1 = strchr(p, ' ');
 	if (p1 == NULL) return false;
 	if (len < p1 - p + 1) return false;
 	CPYMEM(path, p, p1 - p);
@@ -642,22 +669,22 @@ bool httpgetpath(HTTPNetwork n, char* path,size_t len)
 	return true;
 }
 
-size_t httpgetranges(HTTPNetwork n,size_t** range,size_t total)
+size_t httpgetranges(HTTPNetwork n, size_t** range, size_t total)
 {	//Range: bytes=  0-499, -500 (last 500 bytes)
 	//0-  infinity
-	int numrange = 1;		
+	int numrange = 1;
 	bool found = false;
-	char*p = n->buffer;
+	char* p = n->buffer;
 	while (!found) {
 		p = strstr(p, "ange:");
 		if ((p == NULL) || (p == n->buffer)) return 0;
-		char *ph = p; ph--;
+		char* ph = p; ph--;
 		if (tolower(*ph) != 'r') { p += 5; }
 		else found = true;
 	}
 	p += 5;
 	while (*p == ' ') p++;
-	if (strstr(p, "bytes=")!=p) return 0;
+	if (strstr(p, "bytes=") != p) return 0;
 	p += 6;
 	char* e = strstr(p, "\r");
 	if (e != NULL) *e = 0;
@@ -667,7 +694,7 @@ size_t httpgetranges(HTTPNetwork n,size_t** range,size_t total)
 		if (*c == ',') numrange++;
 		c++;
 	}
-	*range = (size_t*)ALLOCMEM(sizeof(size_t)*2*numrange);
+	*range = (size_t*)ALLOCMEM(sizeof(size_t) * 2 * numrange);
 	if (*range == NULL) return 0;
 	c = p;
 	int i = 0;
@@ -678,12 +705,12 @@ size_t httpgetranges(HTTPNetwork n,size_t** range,size_t total)
 		r2 = total;
 		while (*c == ' ') c++;
 		if (c[0] == '-') {	//last bytes
-		    int ret=sscanf(c, "-%zu", &r2);
-			(*range)[i * 2] = (r2 > total) ? 0: total-r2;
+			int ret = sscanf(c, "-%zu", &r2);
+			(*range)[i * 2] = (r2 > total) ? 0 : total - r2;
 			(*range)[i * 2 + 1] = total - 1;
 		}
 		else {				//range
-			int ret=sscanf(c, "%zu-%zu", &r1, &r2);
+			int ret = sscanf(c, "%zu-%zu", &r1, &r2);
 			(*range)[i * 2] = (r1 > total - 1) ? total - 1 : r1;
 			(*range)[i * 2 + 1] = (r2 > total - 1) ? total - 1 : r2;
 		}
@@ -700,7 +727,7 @@ size_t httpgetranges(HTTPNetwork n,size_t** range,size_t total)
 int httpgetnumparam(HTTPNetwork n)
 {
 	int c = 0;
-	char *p = strstr(n->buffer, "GET /");
+	char* p = strstr(n->buffer, "GET /");
 	if (p == NULL) return 0;
 	p += 5;
 	char* p1 = strchr(p, ' '); if (p1 == NULL) return 0;
@@ -709,7 +736,7 @@ int httpgetnumparam(HTTPNetwork n)
 	while ((q != NULL) && (q < p1)) {
 		q = strchr(q, '=');
 		if ((q != NULL) && (q < p1)) c++;
-		if (q!=NULL) q++;
+		if (q != NULL) q++;
 	}
 	return c;
 }
@@ -730,7 +757,7 @@ int httppostnumparam(HTTPNetwork n)
 	return c;
 }
 
-size_t httpgetparamvalue(HTTPNetwork n, const char* name, char* value,size_t len)
+size_t httpgetparamvalue(HTTPNetwork n, const char* name, char* value, size_t len)
 {
 	char* p = strstr(n->buffer, "GET /");
 	if (p == NULL) return 0;
@@ -757,7 +784,7 @@ size_t httpgetparamvalue(HTTPNetwork n, const char* name, char* value,size_t len
 	return v;
 }
 
-bool httpgetparam(HTTPNetwork n, int id, char* name, char* value,size_t len)
+bool httpgetparam(HTTPNetwork n, int id, char* name, char* value, size_t len)
 {
 	char* p = strstr(n->buffer, "GET /");
 	if (p == NULL) return false;
@@ -789,7 +816,7 @@ bool httpgetparam(HTTPNetwork n, int id, char* name, char* value,size_t len)
 	return true;
 }
 
-bool httppostparam(HTTPNetwork n, int id, char* name, char* value,size_t len)
+bool httppostparam(HTTPNetwork n, int id, char* name, char* value, size_t len)
 {
 	char* p = strstr(n->buffer, "\r\n\r\n");
 	if (p == NULL) return false;
@@ -820,7 +847,7 @@ bool httppostparam(HTTPNetwork n, int id, char* name, char* value,size_t len)
 	return true;
 }
 
-size_t httppostparamvalue(HTTPNetwork n, const char* name, char* value,size_t len)
+size_t httppostparamvalue(HTTPNetwork n, const char* name, char* value, size_t len)
 {
 	char* p = strstr(n->buffer, "\r\n\r\n");
 	if (p == NULL) return 0;
@@ -840,7 +867,7 @@ size_t httppostparamvalue(HTTPNetwork n, const char* name, char* value,size_t le
 	return v;
 }
 
-bool httpgetuseragent(HTTPNetwork n, char* agent,size_t len)
+bool httpgetuseragent(HTTPNetwork n, char* agent, size_t len)
 {   //User-Agent:
 	bool found = false;
 	char* p = n->buffer;
@@ -867,7 +894,7 @@ bool httpgetuseragent(HTTPNetwork n, char* agent,size_t len)
 	return true;
 }
 
-bool httpgethost(HTTPNetwork n, char* host,size_t len)
+bool httpgethost(HTTPNetwork n, char* host, size_t len)
 {	//Host:
 	bool found = false;
 	char* p = n->buffer;
@@ -889,14 +916,14 @@ bool httpgethost(HTTPNetwork n, char* host,size_t len)
 	return true;
 }
 
-bool httpgetcookie(HTTPNetwork n,const char* name,char* cookie,size_t len)
+bool httpgetcookie(HTTPNetwork n, const char* name, char* cookie, size_t len)
 {	//Cookie: name=value;name2=value2
-	char*p = n->buffer;
+	char* p = n->buffer;
 	bool found = false;
 	while (!found) {
 		p = strstr(p, "ookie:");
 		if ((p == NULL) || (p == n->buffer)) return false;
-		char *ph = p; ph--;
+		char* ph = p; ph--;
 		if (tolower(*ph) != 'c') { p += 6; }
 		else found = true;
 	}
@@ -904,15 +931,15 @@ bool httpgetcookie(HTTPNetwork n,const char* name,char* cookie,size_t len)
 	while (*p == ' ') p++;
 	char* ep = strstr(p, "\r");
 	if (ep == NULL) return false;
-	p=strstr(p, name);
+	p = strstr(p, name);
 	if ((p == NULL) || (p > ep)) return false;
-	char *rp = p; rp--;
+	char* rp = p; rp--;
 	if (!((*rp == ' ') || (*rp == ';'))) return false;
 	p += strlen(name);
 	if (*p != '=') return false;
 	p++;
 	char* ep2 = strstr(p, ";");
-	if ((ep2 < ep) && (ep2!=NULL)) ep = ep2;
+	if ((ep2 < ep) && (ep2 != NULL)) ep = ep2;
 	if (len < ep - p + 1) return false;
 	CPYMEM(cookie, p, (ep - p));
 	cookie[ep - p] = 0;
@@ -931,7 +958,7 @@ void httpsetjson(HTTPNetwork n, const char* content)
 
 void httpsetjson(HTTPNetwork n, unsigned int code, const char* content)
 {
-	httpsetcontentwithcode(n, code,NULL, "application/json", (char*)content, strlen(content));
+	httpsetcontentwithcode(n, code, NULL, "application/json", (char*)content, strlen(content));
 }
 
 void httpsetcontent(HTTPNetwork n, const char* header, const char* contenttype, char* content, size_t total)
@@ -945,7 +972,7 @@ void httpsetcontent(HTTPNetwork n, const char* header, const char* contenttype, 
 	if (n->sendmsg != NULL) {
 		if (header == NULL)
 			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
-		else 
+		else
 			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
 		CPYMEM(&n->sendmsg[l], content, len);
@@ -953,7 +980,7 @@ void httpsetcontent(HTTPNetwork n, const char* header, const char* contenttype, 
 	}
 }
 
-void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header, const char* contenttype,char* content, size_t total)
+void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header, const char* contenttype, char* content, size_t total)
 {	//main response with code
 	if (code == 200) { httpsetcontent(n, header, contenttype, content, total); return; }
 	size_t len = strlen(content) + ((header != NULL) ? strlen(header) : 0);
@@ -966,7 +993,7 @@ void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header
 		char status[512];
 		httpcode(code, status);
 		if (header == NULL)
-			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n",code, status,total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, total, contenttype);
 		else
 			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\n%s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
@@ -978,67 +1005,67 @@ void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header
 void httpset(HTTPNetwork n, size_t total)
 {
 	if (n->sendmsg != NULL) FREEMEM(n->sendmsg);
-	n->sendmsg = (char*)ALLOCMEM(total+2000);	//padding buffer for boundary
-	n->sendSize = (unsigned int)total+1;
+	n->sendmsg = (char*)ALLOCMEM(total + 2000);	//padding buffer for boundary
+	n->sendSize = (unsigned int)total + 1;
 	n->sendIndex = 0;
 }
 
-void httpsetraw(HTTPNetwork n, const char* header,const char* contenttype, size_t total)
+void httpsetraw(HTTPNetwork n, const char* header, const char* contenttype, size_t total)
 {
 	if (n->sendSize - n->sendIndex < 256) return;
 	if (header == NULL)
 		sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
-	else 
+	else
 		sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
 	n->sendIndex = strlen(n->sendmsg);
 }
 
-void httpsetacceptranges(HTTPNetwork n, const char* header, const char* contenttype,size_t total)
+void httpsetacceptranges(HTTPNetwork n, const char* header, const char* contenttype, size_t total)
 {
 	if (n->sendSize - n->sendIndex < 256) return;
 	if (header == NULL)
 		sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
-	else 
+	else
 		sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
 	n->sendIndex = strlen(n->sendmsg);
 }
 
-void httpsetsingleranges(HTTPNetwork n, const char* header, const char* contenttype, size_t size,size_t rangea,size_t rangeb)
+void httpsetsingleranges(HTTPNetwork n, const char* header, const char* contenttype, size_t size, size_t rangea, size_t rangeb)
 {	//Content-Duration: <sec>
 	if (n->sendSize - n->sendIndex < 256) return;
 	if (header == NULL)
-		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %zu-%zu/%zu\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", rangea, rangeb, size, (rangeb-rangea+1), contenttype);
-	else 
-		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %zu-%zu/%zu\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header,rangea, rangeb, size, (rangeb - rangea + 1), contenttype);
+		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %zu-%zu/%zu\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", rangea, rangeb, size, (rangeb - rangea + 1), contenttype);
+	else
+		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Range: bytes %zu-%zu/%zu\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, rangea, rangeb, size, (rangeb - rangea + 1), contenttype);
 	n->sendIndex = strlen(n->sendmsg);
 }
 
-void httpsetmultiranges(HTTPNetwork n, const char* header,const char* contenttype, size_t size,int numrange, size_t* range,const char* boundary)
-{	
-	if (n->sendSize - n->sendIndex < 256*(numrange+1)) return;
+void httpsetmultiranges(HTTPNetwork n, const char* header, const char* contenttype, size_t size, int numrange, size_t* range, const char* boundary)
+{
+	if (n->sendSize - n->sendIndex < 256 * (numrange + 1)) return;
 	size_t len = 0;
 	n->sendIndex = 0;
 	for (int i = 0; i < numrange; i++)
 	{
-		len += range[i * 2 + 1] - range[i * 2]+1;
-		httpbeginboundarymultiranges(n, contenttype, boundary, size, range[i*2], range[i*2+1]);
+		len += range[i * 2 + 1] - range[i * 2] + 1;
+		httpbeginboundarymultiranges(n, contenttype, boundary, size, range[i * 2], range[i * 2 + 1]);
 		httpendboundarymultiranges(n, boundary);
 	}
 	len += n->sendIndex;
-	if (header==NULL)
+	if (header == NULL)
 		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", boundary, len);
 	else
-		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n",header,boundary,len);
+		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", header, boundary, len);
 	n->sendIndex = strlen(n->sendmsg);
 }
 
-void httpbeginboundarymultiranges(HTTPNetwork n,const char* contenttype, const char* boundary, size_t size, size_t rangea, size_t rangeb)
+void httpbeginboundarymultiranges(HTTPNetwork n, const char* contenttype, const char* boundary, size_t size, size_t rangea, size_t rangeb)
 {	//use padding buffer
 	sprintf(&n->sendmsg[n->sendIndex], "--%s\nContent-Type: %s\r\nContent-Range: bytes %zu-%zu/%zu\r\n\r\n", boundary, contenttype, rangea, rangeb, size);
 	n->sendIndex += strlen(&n->sendmsg[n->sendIndex]);
 }
 
-void httpendboundarymultiranges(HTTPNetwork n,const char* boundary)
+void httpendboundarymultiranges(HTTPNetwork n, const char* boundary)
 {	//use padding buffer 
 	sprintf(&n->sendmsg[n->sendIndex], "--%s\r\n", boundary);
 	n->sendIndex += strlen(&n->sendmsg[n->sendIndex]);
@@ -1062,12 +1089,12 @@ void httplastmodified(TIME lastmodified, char* header)
 	sprintf(header, "Last-Modified: %s", r);
 }
 
-void httpsetcookie(const char* name, const char* value,char* header)
+void httpsetcookie(const char* name, const char* value, char* header)
 {	//Set-Cookie: name=value
 	//Set-Cookie: name2=value2; Expires = Wed, 09 Jun 2021 10:18 : 14 GMT
 	size_t len = strlen(value);
 	*header = 0;
-	char* newvalue = (char*)ALLOCMEM(len*4+1);
+	char* newvalue = (char*)ALLOCMEM(len * 4 + 1);
 	if (newvalue != NULL) {
 		*newvalue = 0;
 		httpurlencode(value, newvalue, len * 4 + 1);
@@ -1076,15 +1103,15 @@ void httpsetcookie(const char* name, const char* value,char* header)
 	}
 }
 
-bool httpcode(unsigned int code,char* status)
+bool httpcode(unsigned int code, char* status)
 {
 	switch (code)
 	{
-		case 400: { strcpy(status, "Bad Request");  return true;  }
-		case 401: { strcpy(status, "Unauthorized");  return true;  }
-		case 404: { strcpy(status, "Not Found");  return true;  }
-		case 500: { strcpy(status, "Internal Server Error");  return true;  }
-		case 501: { strcpy(status, "Not Implemented");  return true;  }
+	case 400: { strcpy(status, "Bad Request");  return true;  }
+	case 401: { strcpy(status, "Unauthorized");  return true;  }
+	case 404: { strcpy(status, "Not Found");  return true;  }
+	case 500: { strcpy(status, "Internal Server Error");  return true;  }
+	case 501: { strcpy(status, "Not Implemented");  return true;  }
 	}
 	return false;
 }
@@ -1155,7 +1182,7 @@ unsigned int httpqueuenearestpoweroftwo(unsigned int x)
 	return 0;
 }
 
-bool inithttpqueue(HTTPQueue* p,unsigned int size)
+bool inithttpqueue(HTTPQueue* p, unsigned int size)
 {
 	p->size = httpqueuenearestpoweroftwo(size);
 	p->entries = 0;

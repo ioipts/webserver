@@ -61,6 +61,12 @@
 #include <thread> 
 #endif
 
+#include <string.h>
+#include <stdio.h>		
+#include <stdlib.h>   
+#include <ctype.h>
+#include <time.h>
+
 #if defined(_MSC_VER)
  //Windows
  //we do not want the warnings about the old deprecated and unsecure CRT functions 
@@ -70,13 +76,9 @@
 #define NOMINMAX
 #include <winsock2.h>
 #include <windows.h>
-#include <stdio.h>
-#include <stdlib.h>	
-#include <ctype.h>
 #include <sys/timeb.h>
 #include <sys/stat.h>
 #include <stdint.h>
-#include <time.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning( disable : 4996 )				// disable deprecated warning
@@ -123,13 +125,8 @@
 #include <sys/socket.h> 
 #include <arpa/inet.h>  
 #include <sys/time.h>
-#include <time.h>
 #include <utime.h>
 #include <unistd.h>     
-#include <ctype.h> 		
-#include <stdio.h>		
-#include <stdlib.h>     
-#include <string.h>
 #include <signal.h>
 
 #else	
@@ -141,13 +138,8 @@
 #include <sys/time.h>
 #include <sys/timeb.h>
 #include <sys/mman.h>	
-#include <time.h>
 #include <utime.h>
 #include <unistd.h>  
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>     
-#include <stdio.h>
 #include <signal.h>	
 #endif
 
@@ -510,6 +502,23 @@ void httpendboundarymultiranges(HTTPNetwork n, const char* boundary);
 * 
 */
 void httpendfooter(HTTPNetwork n);
+
+void httpgetclientaddr(HTTPNetwork n, char* out);
+
+/**
+* Content-Disposition: form-data; name="uploadedfile"; filename="hello.o"
+*/
+bool httpgetfilename(char* buffer, char* filename, size_t len);
+
+/**
+* shift receiving buffer
+*/
+void httpshiftbuffer(HTTPNetwork n, size_t len);
+
+/**
+* expand receiving buffer
+*/
+bool httpexpandbuffer(HTTPNetwork msg, size_t len);
 
 /**
 * @param header at least 256 bytes
