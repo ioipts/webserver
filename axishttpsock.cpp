@@ -213,7 +213,7 @@ void* httpprocthread(void* arg)
 		FD_ZERO(&socks);
 		FD_SET(n->socket, &socks);
 		readsocks = select(FD_SETSIZE, &socks, (fd_set*)0, (fd_set*)0, &timeout);
-		retval = (readsocks>0)?read(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex):0;
+		retval = (readsocks>0)?recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex,0):0;
 		if (retval >= 0)		//in case retval==0 or -1
 		{
 			if (retval > 0) {
