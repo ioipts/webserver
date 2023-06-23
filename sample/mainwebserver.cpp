@@ -51,6 +51,7 @@ int httpmsg(HTTPNetwork msg)
 					FSEEK(f->f, 0, SEEK_END);
 					f->total = FTELL(f->f);
 #if defined(X32) 
+					//reading >4GB file in 32bit OS
 					if (f->total == 0xFFFFFFFF) {
 						httpsetjson(msg, 500, "");
 						return HTTPMSGEND;
@@ -139,7 +140,7 @@ int main(int argc,char** argv)
 	http=new HTTPServerNetwork(port);
 	http->setPath(webdir);
 	http->setOnMsg(httpmsg);
-	printf("Web server 2.0:\n");
+	printf("Axis Web server:\n");
 	http->begin();
 	delete http;
 	return 0;

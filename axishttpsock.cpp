@@ -196,8 +196,6 @@ void endhttpproc(HTTPProcThread p)
 
 /**
 * Process thread
-* - always destroy network here
-* - write socket
 */
 void* httpprocthread(void* arg)
 {
@@ -264,7 +262,7 @@ void* httpprocthread(void* arg)
 }
 
 /**
-* listen thread
+* listening thread
 */
 void* httplistenthread(void* arg)
 {
