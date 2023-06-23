@@ -13,7 +13,7 @@ unsigned int HTTPServerNetwork::MAXMSG = 100000;
 unsigned int HTTPServerNetwork::MAXLISTEN = 128;
 unsigned int HTTPServerNetwork::MAXCONNECTION = 1024;
 unsigned int HTTPServerNetwork::MAXQUEUE=100000;
-unsigned int HTTPServerNetwork::PINGTIMEOUT = 10000;
+unsigned int HTTPServerNetwork::PINGTIMEOUT = 3000;
 
 bool inithttpqueue(HTTPQueue* p, unsigned int size);
 int httpenqueue(HTTPQueue* h, HTTPNetwork value);
@@ -46,22 +46,6 @@ SOCKET inithttpserver(int port,unsigned int maxbuffer,unsigned int maxlisten)
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&enable, sizeof(int));
 #if defined(__APPLE__)
 	setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE , (const char*)&enable, sizeof(int));
-#endif
-#if !defined(_MSC_VER)
-	/*void handler(int s) {
-	printf("fds\n");
-	}*/
-	//setsockopt(sock, SOL_SOCKET, SO_SIGNOPIPE, (const char*)&enable, sizeof(int));
-	//signal(SIGPIPE, SIG_IGN);
-	/*struct sigaction act;
-	memset(&act, 0, sizeof(act));
-	act.sa_handler = SIG_IGN;
-	act.sa_flags = SA_RESTART;
-	sigaction(SIGPIPE, &act, NULL);
-	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 100;
-	setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(int));*/
 #endif
 	int msgSize = maxbuffer;
 	setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char*)&msgSize, sizeof(msgSize));
@@ -110,11 +94,11 @@ void destroyhttpconfig(HTTPNetworkConfig c)
 	FREEMEM(c);
 }
 
-HTTPNetwork inithttpnetwork(SOCKET csocket,unsigned int size)
-{
+HTTPNetwork inithttpnetwork(SOCKET csocket,void* premem,unsigned int size)
+{	
 	HTTPNetwork n = (HTTPNetwork)ALLOCMEM(sizeof(struct HTTPNetworkS));
 	if (n == NULL) return NULL;
-	n->buffer = (char*)ALLOCMEM(size);
+	n->buffer=(char*)premem;
 	n->bufferIndex = 0;
 	n->bufferSize = size;
 	n->socket = csocket;
@@ -230,8 +214,8 @@ void* httpprocthread(void* arg)
 	while ((r != HTTPMSGEND) && (!config->exitflag) && (time(NULL)-n->lastping<config->pingtimeout)) {
 		FD_ZERO(&socks);
 		FD_SET(n->socket, &socks);
-		readsocks = select(n->socket + 1, &socks, (fd_set*)0, (fd_set*)0, &timeout);
-		retval = (readsocks>0)?recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex, MSG_NOSIGNAL | MSG_DONTWAIT):0;
+		readsocks = select(FD_SETSIZE, &socks, (fd_set*)0, (fd_set*)0, &timeout);
+		retval = (readsocks>0)?read(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex):0;
 		if (retval >= 0)		//in case retval==0 or -1
 		{
 			if (retval > 0) {
@@ -282,132 +266,139 @@ void* httpprocthread(void* arg)
 /**
 * listen thread
 */
-void httplistenstep(HTTPListenThread c)	
+void* httplistenthread(void* arg)
 {
-	HTTPNetwork n;
+	HTTPListenThread c = (HTTPListenThread)arg;
 	HTTPNetworkConfig config = c->config;
 	SOCKET server=c->server;
+	HTTPNetwork n;
 	SOCKET csocket;
 	int readsocks;	
 	fd_set socks;
 	struct timeval timeout;
 	struct sockaddr client;
 	int size=sizeof(struct sockaddr);
-	TIME now = time(NULL);
-
 	//set the timeout to 1 millisec. make the cpu usage too high 
 	timeout.tv_sec=0;                    
-    timeout.tv_usec=0;					
-	//get current tick for process
-	unsigned int d=(unsigned int)(now-c->lasttime);		
-	if (d>c->tick) c->tick=d; 
-	c->lasttime = now;
-	//****************** queue ****************************
-	if (config->queue.entries>0)
-	{
-#if defined(_PTHREAD)
-		pthread_mutex_lock(&config->mutex);
-#endif
-		if (config->numprocthread < config->maxconnection) {
-			HTTPNetwork dn = httpdequeue(&config->queue);
-			config->numprocthread++;
-#if defined(_PTHREAD)
-			pthread_t workerThreadId;
-			pthread_attr_t tattr;
-			sched_param schedparam;
-			pthread_attr_init(&tattr);
-			pthread_attr_getschedparam(&tattr, &schedparam);
-			schedparam.sched_priority = 99;
-			pthread_attr_setschedparam(&tattr, &schedparam);
-			HTTPProcThread p = inithttpproc(dn, config);
-			int rc = pthread_create(&workerThreadId, &tattr, httpprocthread, (void*)p);
-			if (rc != 0) {
-				config->numprocthread--;
-				destroyhttpproc(p);
-			}
-			else {
-				pthread_detach(workerThreadId);
-			}
-#else
-#endif
+	timeout.tv_usec=0;					
+
+	//22/06/2023 pre allocate mem for fixing recv bug in Mac OS X
+	#define PREMEMSIZE 1000
+	void** premem=(void**)ALLOCMEM(PREMEMSIZE*sizeof(void*));
+	int prememi=PREMEMSIZE;
+
+	c->lasttime = time(NULL);
+	while (!config->exitflag) {
+		if (prememi==PREMEMSIZE)
+		{
+			for (int i=0;i<PREMEMSIZE;i++)
+				premem[i]=(void*)ALLOCMEM(config->msgsize);
+			prememi=0;
 		}
-#if defined(_PTHREAD)
-		pthread_mutex_unlock(&config->mutex);
-#endif
-		return;
-	}
-	//****************** accept *****************************
-	FD_ZERO(&socks);
-    FD_SET(server, &socks);
-#if defined(_MSC_VER) && !defined(__MINGW32__)
-#pragma warning(push, 0)
-#endif
-	readsocks=select((server+1), &socks, (fd_set *) 0, (fd_set *) 0, &timeout);	  //select the highest socket
-#if defined(_MSC_VER) && !defined(__MINGW32__)
-#pragma warning( pop )
-#endif
-	if (readsocks > 0)
-	{
-	   size = sizeof(struct sockaddr);
-#if defined(_MSC_VER) || defined(__MINGW32__)
-	   csocket=accept(server,(struct sockaddr *)&client, &size);
-#else
-	   csocket=accept(server,(struct sockaddr *)&client, (socklen_t*)&size);
-#endif
-	   if (csocket != -1) {		//2019/10/11 bug in ARM
-			n = inithttpnetwork(csocket,config->msgsize);	
-			if (n != NULL) {
-				n->addr = client;
-#if defined(_PTHREAD)
-				pthread_mutex_lock(&config->mutex);
-#endif
-				if (config->numprocthread >= config->maxconnection) {
-					int i = httpenqueue(&config->queue, n);
-					if (i == -1) {
-						destroyhttpnetwork(n);
-					}
+		TIME now = time(NULL);
+		//get current tick for process
+		unsigned int d=(unsigned int)(now-c->lasttime);		
+		if (d>c->tick) c->tick=d; 
+		c->lasttime = now;
+		//****************** queue ****************************
+		if (config->queue.entries>0)
+		{
+	#if defined(_PTHREAD)
+			pthread_mutex_lock(&config->mutex);
+	#endif
+			if (config->numprocthread < config->maxconnection) {
+				HTTPNetwork dn = httpdequeue(&config->queue);
+				config->numprocthread++;
+	#if defined(_PTHREAD)
+				pthread_t workerThreadId;
+				pthread_attr_t tattr;
+				sched_param schedparam;
+				pthread_attr_init(&tattr);
+				pthread_attr_getschedparam(&tattr, &schedparam);
+				schedparam.sched_priority = 99;
+				pthread_attr_setschedparam(&tattr, &schedparam);
+				HTTPProcThread p = inithttpproc(dn, config);
+				int rc = pthread_create(&workerThreadId, &tattr, httpprocthread, (void*)p);
+				if (rc != 0) {
+					config->numprocthread--;
+					destroyhttpproc(p);
 				}
 				else {
-					config->numprocthread++;
-#if defined(_PTHREAD)
-					pthread_t workerThreadId;
-					pthread_attr_t tattr;
-					sched_param schedparam;
-					pthread_attr_init(&tattr);
-					pthread_attr_getschedparam(&tattr, &schedparam);
-					schedparam.sched_priority = 99;
-					pthread_attr_setschedparam(&tattr, &schedparam);
-					HTTPProcThread p = inithttpproc(n, config);
-					int rc = pthread_create(&workerThreadId, &tattr, httpprocthread, (void*)p);
-					if (rc != 0) {
-						config->numprocthread--;
-						destroyhttpproc(p);
-					}
-					else {
-						pthread_detach(workerThreadId);
-					}
-#else
-					HTTPProcThread p = inithttpproc(n, config);
-					std::thread proc(httpprocthread, (void*)p);
-					proc.detach();
-#endif
+					pthread_detach(workerThreadId);
 				}
-#if defined(_PTHREAD)
-				pthread_mutex_unlock(&config->mutex);
-#endif
+	#else
+	#endif
 			}
-	   }
+	#if defined(_PTHREAD)
+			pthread_mutex_unlock(&config->mutex);
+	#endif
+		} else {
+		//****************** accept *****************************
+		FD_ZERO(&socks);
+		FD_SET(server, &socks);
+	#if defined(_MSC_VER) && !defined(__MINGW32__)
+	#pragma warning(push, 0)
+	#endif
+		readsocks=select((server+1), &socks, (fd_set *) 0, (fd_set *) 0, &timeout);	  //select the highest socket
+	#if defined(_MSC_VER) && !defined(__MINGW32__)
+	#pragma warning( pop )
+	#endif
+		if (readsocks > 0)
+		{
+			size = sizeof(struct sockaddr);
+		#if defined(_MSC_VER) || defined(__MINGW32__)
+			csocket=accept(server,(struct sockaddr *)&client, &size);
+		#else
+			csocket=accept(server,(struct sockaddr *)&client, (socklen_t*)&size);
+		#endif
+			if (csocket != -1) {		//11/10/2019 sometimes return -1
+					n = inithttpnetwork(csocket,premem[prememi],config->msgsize);	
+					prememi++;
+					if (n != NULL) {
+						n->addr = client;
+		#if defined(_PTHREAD)
+						pthread_mutex_lock(&config->mutex);
+		#endif
+						if (config->numprocthread >= config->maxconnection) {
+							int i = httpenqueue(&config->queue, n);
+							if (i == -1) {
+								destroyhttpnetwork(n);
+							}
+						}
+						else {
+							config->numprocthread++;
+		#if defined(_PTHREAD)
+							pthread_t workerThreadId;
+							pthread_attr_t tattr;
+							sched_param schedparam;
+							pthread_attr_init(&tattr);
+							pthread_attr_getschedparam(&tattr, &schedparam);
+							schedparam.sched_priority = 99;
+							pthread_attr_setschedparam(&tattr, &schedparam);
+							HTTPProcThread p = inithttpproc(n, config);
+							int rc = pthread_create(&workerThreadId, &tattr, httpprocthread, (void*)p);
+							if (rc != 0) {
+								config->numprocthread--;
+								destroyhttpproc(p);
+							}
+							else {
+								pthread_detach(workerThreadId);
+							}
+		#else
+							HTTPProcThread p = inithttpproc(n, config);
+							std::thread proc(httpprocthread, (void*)p);
+							proc.detach();
+		#endif
+						}
+		#if defined(_PTHREAD)
+						pthread_mutex_unlock(&config->mutex);
+		#endif
+					}
+				}
+			}
+		}
 	}
-}
-
-void* httplistenthread(void* arg)
-{
-	HTTPListenThread p = (HTTPListenThread)arg;
-	HTTPNetworkConfig config = p->config;
-	p->lasttime = time(NULL);
-	while (!config->exitflag) {
-		httplistenstep(p);
-	}
+	FREEMEM(premem);
 	return NULL;
 }
 
