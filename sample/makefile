@@ -1,7 +1,7 @@
 #22/05/2023
 EXECUTABLE=webserver
 CC=g++
-OBJ_PATH=obj
+OBJ_PATH=.
 ifndef OS
 OS=$(shell uname)
 endif
