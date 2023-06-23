@@ -133,7 +133,6 @@ int httpmsg(HTTPNetwork msg)
 						char* headerend=strstr(msg->buffer,"\r\n\r\n");
 						if (headerend == NULL) return HTTPMSGEND;
 						*headerend = 0;
-						printf("%s\n", msg->buffer);
 						char file[2024];
 						char path[2024];
 						u->f = NULL;
