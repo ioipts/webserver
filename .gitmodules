@@ -1,0 +1,3 @@
+[submodule "sample/file-folder"]
+	path = sample/file-folder
+	url = https://github.com/ioipts/file-folder.git
