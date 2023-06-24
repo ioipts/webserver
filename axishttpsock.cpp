@@ -1131,6 +1131,7 @@ bool httpcontenttype(const char* filename, char* contenttype)
 		if (p != NULL) {
 			p++;
 			ext = p;
+			p=strstr(ext,".");
 		}
 	}
 	if (ext == NULL) {
