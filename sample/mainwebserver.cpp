@@ -100,7 +100,11 @@ int httpmsg(HTTPNetwork msg)
 					f->range = NULL;
 					f->seek = 0;
 					f->total = 0;
-					httpcontenttype(path, f->contenttype);
+					std::string lpath(path);
+					for (int k=0;k<lpath.size();k++) {
+						lpath[k]=std::tolower(lpath[k]);
+					}
+					httpcontenttype(lpath.c_str(), f->contenttype);
 					FSEEK(f->f, 0, SEEK_END);
 					f->total = FTELL(f->f);
 #if defined(X32) 
