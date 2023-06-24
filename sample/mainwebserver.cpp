@@ -40,7 +40,7 @@ void browsefile(HTTPNetwork msg,const char* path)
  std::string file=std::string(webdir)+SEPERATORSTR+path;
  std::vector<std::string> files=listFiles(file.c_str());
  std::vector<std::string> folders=listFolders(file.c_str());
- std::string res="<html><body>";
+ std::string res="<html><body>Folders<br/>";
  std::string seperator=(strlen(path)==0)?"":"/";
  
  if (strlen(path)!=0) {		//backtrack
@@ -54,12 +54,19 @@ void browsefile(HTTPNetwork msg,const char* path)
  {
 	res=res+"<a href=\""+((strlen(path)>0)?"/":"")+path+"/"+folders[i]+"\">&lt;"+folders[i]+"&gt;</a><br/>\n";
  }
- res=res+"<br/>";
+ res=res+"<br/>Files<br/>";
  for (int i=0;i<files.size();i++)
  {
 	res=res+"<a href=\""+((strlen(path)>0)?"/":"")+path+"/"+files[i]+"\">"+files[i]+"</a><br/>\n";
  }
+ res=res+"<br/>Upload<br/><a href=\"/post\">click</a><br/>";
  res=res+"</bod></html>";
+ httpsetcontent(msg, NULL, "text/html; charset=utf-8", (char*)res.c_str(), res.size());
+}
+
+void uploadhtml(HTTPNetwork msg)
+{
+ std::string res="<html><body><form  enctype=\"multipart/form-data\" method=\"post\" action=\"\"><input type=\"file\" name=\"myfile\"><br/><button type=\"submit\">Submit</button></form></body></html>";
  httpsetcontent(msg, NULL, "text/html; charset=utf-8", (char*)res.c_str(), res.size());
 }
 
@@ -154,7 +161,8 @@ int httpmsg(HTTPNetwork msg)
 				}
 				if (!acceptfile) {
 					//TODO: implement other endpoints here
-					browsefile(msg,path);
+					if (strcmp(path,"post")==0) uploadhtml(msg);
+					else browsefile(msg,path);
 					return HTTPMSGEND;
 				}
 			}
