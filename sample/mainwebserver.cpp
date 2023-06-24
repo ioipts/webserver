@@ -1,4 +1,5 @@
 #include "axishttpsock.h"
+#include "axisfile.h"
 
 struct HTTPDownload
 {
@@ -34,6 +35,34 @@ HTTPServerNetwork* http;
 int port = 8027;
 char webdir[1024];
 
+void browsefile(HTTPNetwork msg,const char* path)
+{
+ std::string file=std::string(webdir)+SEPERATORSTR+path;
+ std::vector<std::string> files=listFiles(file.c_str());
+ std::vector<std::string> folders=listFolders(file.c_str());
+ std::string res="<html><body>";
+ std::string seperator=(strlen(path)==0)?"":"/";
+ 
+ if (strlen(path)!=0) {		//backtrack
+	std::string p(path);
+	size_t index=p.rfind("/");
+	if (index!=-1) p=p.substr(0,index);
+	else p="";
+	res=res+"<a href=\"/"+p+"\">..</a><br/>\n";	
+ }
+ for (int i=0;i<folders.size();i++)
+ {
+	res=res+"<a href=\""+((strlen(path)>0)?"/":"")+path+"/"+folders[i]+"\">&lt;"+folders[i]+"&gt;</a><br/>\n";
+ }
+ res=res+"<br/>";
+ for (int i=0;i<files.size();i++)
+ {
+	res=res+"<a href=\""+((strlen(path)>0)?"/":"")+path+"/"+files[i]+"\">"+files[i]+"</a><br/>\n";
+ }
+ res=res+"</bod></html>";
+ httpsetcontent(msg, NULL, "text/html; charset=utf-8", (char*)res.c_str(), res.size());
+}
+
 int httpmsg(HTTPNetwork msg)
 {	
 	switch (msg->state)
@@ -52,7 +81,8 @@ int httpmsg(HTTPNetwork msg)
 				bool acceptfile = false;
 				if (!httpgetpath(msg, path, 1000)) return HTTPMSGEND;
 				method = httpgetmethod(msg);
-				if ((strstr(path, ".") != 0) && (method == HTTPMETHODGET)) {
+				bool isFile=isFileExists((std::string(webdir)+"/"+path).c_str());
+				if ((isFile) && (method == HTTPMETHODGET)) {
 					char file[2024];
 					sprintf(file, "%s%s%s", webdir, SEPERATORSTR, path);
 					FILE* fo = FOPEN(file, "rb");
@@ -120,7 +150,7 @@ int httpmsg(HTTPNetwork msg)
 				}
 				if (!acceptfile) {
 					//TODO: implement other endpoints here
-					httpsetjson(msg, "{\"status\":\"ok\"}");
+					browsefile(msg,path);
 					return HTTPMSGEND;
 				}
 			}

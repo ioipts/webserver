@@ -11,27 +11,27 @@ LOCAL_PATH=..
 GAME_PATH=.
 SEP=/
 CN=rm -rf 
-CFLAGS=-c -Wall -F/Library/Frameworks -std=c++11
-LDFLAGS=-F/Library/Frameworks -lm -lpthread 
+CFLAGS=-c -Wall -I./file-folder -F/Library/Frameworks -std=c++11
+LDFLAGS=-F/Library/Frameworks -lm 
 else ifeq ($(OS),Linux)
 LOCAL_PATH=..
 GAME_PATH=.
 SEP=/
 CN=rm -rf
-CFLAGS=-c -Wall -O3
-LDFLAGS=-lm -lpthread 
+CFLAGS=-c -Wall -O3 -I./file-folder
+LDFLAGS=-lm 
 else ifeq ($(OS),Windows_NT)
 LOCAL_PATH=..
 GAME_PATH=.
 SEP=\\
 CN=del /q
-CFLAGS=-c -Wall -O3
-LDFLAGS=-lm -lpthread -lws2_32 -liphlpapi
+CFLAGS=-c -Wall -O3 -I./file-folder
+LDFLAGS=-lm -lws2_32 -liphlpapi
 endif
 
 INCFLAGS=-I$(LOCAL_PATH) -I$(GAME_PATH) 
 
-SOURCES=$(GAME_PATH)$(SEP)mainwebserver.cpp 
+SOURCES=$(GAME_PATH)$(SEP)mainwebserver.cpp $(GAME_PATH)$(SEP)file-folder$(SEP)axisfile.cpp 
 SOURCES+=$(LOCAL_PATH)$(SEP)axishttpsock.cpp 
 
 OBJECTS=$(SOURCES:.cpp=.o)
