@@ -398,9 +398,13 @@ void* httplistenthread(void* arg)
 				}
 			} else {
 #if defined(_PTHREAD)
-				sleep(10);
+#if defined(_MSC_VER)
+				Sleep(1);
 #else
-				std::this_thread::sleep_for (std::chrono::microseconds(10));
+				usleep(1000);
+#endif
+#else
+				std::this_thread::sleep_for (std::chrono::microseconds(1000));
 #endif
 			}
 		}
