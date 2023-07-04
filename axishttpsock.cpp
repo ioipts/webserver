@@ -13,7 +13,7 @@ unsigned int HTTPServerNetwork::MAXMSG = 100000;
 unsigned int HTTPServerNetwork::MAXLISTEN = 128;
 unsigned int HTTPServerNetwork::MAXCONNECTION = 1024;
 unsigned int HTTPServerNetwork::MAXQUEUE=100000;
-unsigned int HTTPServerNetwork::PINGTIMEOUT = 10000;
+unsigned int HTTPServerNetwork::PINGTIMEOUT = 10;		//second
 
 bool inithttpqueue(HTTPQueue* p, unsigned int size);
 int httpenqueue(HTTPQueue* h, HTTPNetwork value);
@@ -209,12 +209,13 @@ void* httpprocthread(void* arg)
 	HTTPMsgFunc* msgfunc = config->msgFunc;
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 0;
+	n->lastping=time(NULL);
 	r = HTTPMSGCONTINUE;
 	while ((r != HTTPMSGEND) && (!config->exitflag) && (time(NULL) - n->lastping < config->pingtimeout)) {
 		FD_ZERO(&socks);
 		FD_SET(n->socket, &socks);
 		readsocks = select(FD_SETSIZE, &socks, (fd_set*)0, (fd_set*)0, &timeout);
-		retval = (readsocks > 0) ? recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex, 0) : 0;
+		retval = (readsocks > 0) ? recv(n->socket, &n->buffer[n->bufferIndex], n->bufferSize - n->bufferIndex, MSG_NOSIGNAL | MSG_DONTWAIT) : 0;
 		if (retval >= 0)		//in case retval==0 or -1
 		{
 			if (retval > 0) {
