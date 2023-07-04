@@ -395,6 +395,12 @@ void* httplistenthread(void* arg)
 #endif
 					}
 				}
+			} else {
+#if defined(_PTHREAD)
+				sleep(10);
+#else
+				std::this_thread::sleep_for (std::chrono::microseconds(10));
+#endif
 			}
 		}
 	}

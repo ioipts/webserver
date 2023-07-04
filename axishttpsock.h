@@ -59,6 +59,7 @@
 #else
 #include <atomic>
 #include <thread> 
+#include <chrono> 
 #endif
 
 #include <string.h>
@@ -83,35 +84,14 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning( disable : 4996 )				// disable deprecated warning
 
-#define FILEPTR FILE*
-#define SOCKET SOCKET
-#define CLOSESOCKET closesocket
-
 #if defined(_M_X64) 
-#define FOPEN fopen
-#define FWRITE fwrite
-#define FREAD fread
-#define FSEEK _fseeki64
-#define FTELL _ftelli64
-#define FFLUSH fflush
-#define FCLOSE fclose
 #define X64
 #else
-#define FOPEN fopen
-#define FWRITE fwrite
-#define FREAD fread
-#define FSEEK fseek
-#define FTELL ftell
-#define FFLUSH fflush
-#define FCLOSE fclose
 #define X32
 #endif
-#define FEOF feof
-#define SEPERATORCHAR '\\'
-#define SEPERATORSTR "\\"
-#define BYTE __uint8_t
-#define WORD __uint16_t
-#define DWORD __uint32_t
+
+#define SOCKET SOCKET
+#define CLOSESOCKET closesocket
 #define PACKED
 
 #else 
@@ -145,28 +125,12 @@
 
 #if defined(__arm__) || defined(__aarch64__)
 #define X64
-#define FTELL ftello
-#define FSEEK fseeko
 #else
 #define X32
-#define FTELL ftell
-#define FSEEK fseek
 #endif
 
-#define FILEPTR FILE*
 #define SOCKET int
 #define CLOSESOCKET close
-#define FOPEN fopen
-#define FREAD fread
-#define FFLUSH fflush
-#define FWRITE fwrite
-#define FCLOSE fclose
-#define FEOF feof
-#define SEPERATORCHAR '/'
-#define SEPERATORSTR "/"
-#define BYTE __uint8_t
-#define WORD __uint16_t
-#define DWORD __uint32_t
 #define PACKED
 
 #endif
