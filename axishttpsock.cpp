@@ -33,7 +33,7 @@ SOCKET inithttpserver(int port, unsigned int maxbuffer, unsigned int maxlisten)
 	local.sin_family = AF_INET; //Address family
 	local.sin_addr.s_addr = INADDR_ANY; //Wild card IP address
 	local.sin_addr.s_addr = htonl(INADDR_ANY);
-	local.sin_port = htons((u_short)port); //port to use	
+	local.sin_port = htons((unsigned short)port); //port to use	
 	//the socket function creates our SOCKET
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	//If the socket() function fails we exit
