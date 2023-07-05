@@ -19,7 +19,7 @@ GAME_PATH=.
 SEP=/
 CN=rm -rf
 CFLAGS=-c -Wall -O3 -I./file-folder
-LDFLAGS=-lm 
+LDFLAGS=-lm -lpthread
 else ifeq ($(OS),Windows_NT)
 LOCAL_PATH=..
 GAME_PATH=.
