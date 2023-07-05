@@ -1,12 +1,10 @@
 # Web server
 
-Muti-threading web/api server  
-Support upload/download file
-
-## Feature
-Written in C/C++11.  
-Support multi-platform.  
+Multithreaded web/api server  
+Support upload/download large file
+Support multi-platform including Windows, Linux, Mac OS.  
 Support both 32-bit and 64-bit.  
+Written in C/C++11.  
 
 ## How to use
 Just copy axishttpsock.cpp, axishttpsock.h and include in the project.  
