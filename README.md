@@ -1,8 +1,8 @@
 # Web server
 
 Multithreaded web/api server  
-Support upload/download large file
-Support multi-platform including Windows, Linux, Mac OS.  
+Support upload/download large file  
+Support multi-platform including Windows, Linux, Mac OS, Pi.  
 Support both 32-bit and 64-bit.  
 Written in C/C++11.  
 
