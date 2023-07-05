@@ -1,0 +1,11 @@
+version: '3'
+services:
+  axiswebserver:
+    container_name: axiswebserver
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - /data:/data
+    ports:
+      - "8027:8027"
