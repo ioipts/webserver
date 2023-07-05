@@ -8,10 +8,10 @@ RUN mkdir -p /src/sample/file-folder
 RUN mkdir -p /data
 WORKDIR /src
 
-COPY axishttpsock.* /src
-COPY ./sample/mainwebserver.cpp /src/sample
-COPY ./sample/makefile /src/sample
-COPY ./sample/file-folder/axisfile.* /src/sample/file-folder
+COPY axishttpsock.* /src/
+COPY ./sample/mainwebserver.cpp /src/sample/
+COPY ./sample/makefile /src/sample/
+COPY ./sample/file-folder/axisfile.* /src/sample/file-folder/
 WORKDIR /src/sample
 RUN make
 
