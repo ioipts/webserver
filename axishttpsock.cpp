@@ -1232,5 +1232,4 @@ HTTPNetwork httpdequeue(HTTPQueue* h)
 void destroyhttpqueue(HTTPQueue* h)
 {
 	FREEMEM(h->data);
-	FREEMEM(h);
 }
