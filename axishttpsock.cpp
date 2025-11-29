@@ -680,6 +680,23 @@ bool httpgetpath(HTTPNetwork n, char* path, size_t len)
 	return true;
 }
 
+bool httpgetauthorization(HTTPNetwork n, char* token, size_t len)
+{
+	bool found = false;
+	char* p = n->buffer;
+	p = strstr(p, "Authorization:");
+	if ((p == NULL) || (p == n->buffer)) return false;
+	p += 14;
+	char* p1 = strchr(p, '\r');
+	if (p1 == NULL) return false;
+	while (*p == ' ') p++;
+	if (len < p1 - p + 1) return false;
+	CPYMEM(token, p, p1 - p);
+	token[p1 - p] = 0;
+	return true;
+}
+
+
 size_t httpgetranges(HTTPNetwork n, size_t** range, size_t total)
 {	//Range: bytes=  0-499, -500 (last 500 bytes)
 	//0-  infinity

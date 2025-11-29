@@ -385,6 +385,9 @@ size_t httppostparamvalue(HTTPNetwork n, const char* name, char* value, size_t l
 * @return num of range
 */
 size_t httpgetranges(HTTPNetwork n, size_t** range, size_t total);
+bool httpgetauthorization(HTTPNetwork n, char* token, size_t len);
+bool httpgetuseragent(HTTPNetwork n, char* agent, size_t len);
+bool httpgethost(HTTPNetwork n, char* host, size_t len);
 
 /**
 * simple single function for small message
