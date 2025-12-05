@@ -361,6 +361,8 @@ bool httpgetcontenttype(HTTPNetwork n, char* type, char* boundary, size_t len);
 #define HTTPMETHODPOST 2
 #define HTTPMETHODPATCH 3
 #define HTTPMETHODDELETE 4
+#define HTTPMETHODPUT 5
+#define HTTPMETHODOPTION 6
 
 /**
 * 

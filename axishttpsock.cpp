@@ -595,6 +595,8 @@ int httpgetmethod(HTTPNetwork n)
 	if (strstr(n->buffer, "POST /") != NULL) return HTTPMETHODPOST;
 	if (strstr(n->buffer, "PATCH /") != NULL) return HTTPMETHODPATCH;
 	if (strstr(n->buffer, "DELETE /") != NULL) return HTTPMETHODDELETE;
+	if (strstr(n->buffer, "PUT /") != NULL) return HTTPMETHODPUT;
+	if (strstr(n->buffer, "OPTIONS /") != NULL) return HTTPMETHODOPTION;
 	return -1;
 }
 
@@ -667,7 +669,7 @@ bool httpgetpath(HTTPNetwork n, char* path, size_t len)
 {
 	*path = 0;
 	char* p = strstr(n->buffer, " /");
-	if ((p == NULL) || (p - n->buffer > 6) || (p - n->buffer < 3)) return false;
+	if ((p == NULL) || (p - n->buffer > 10) || (p - n->buffer < 3)) return false;
 	p += 2;
 	char* p1 = strchr(p, ' ');
 	if (p1 == NULL) return false;
