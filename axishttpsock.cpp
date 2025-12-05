@@ -999,9 +999,9 @@ void httpsetcontent(HTTPNetwork n, const char* header, const char* contenttype, 
 	}
 	if (n->sendmsg != NULL) {
 		if (header == NULL)
-			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
 		else
-			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
 		CPYMEM(&n->sendmsg[l], content, len);
 		n->sendIndex = (l + len);
@@ -1021,9 +1021,9 @@ void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header
 		char status[512];
 		httpcode(code, status);
 		if (header == NULL)
-			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, total, contenttype);
 		else
-			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\n%s\r\nConnection: close\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, header, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
 		CPYMEM(&n->sendmsg[l], content, len);
 		n->sendIndex = (l + len);
@@ -1081,15 +1081,15 @@ void httpsetmultiranges(HTTPNetwork n, const char* header, const char* contentty
 	}
 	len += n->sendIndex;
 	if (header == NULL)
-		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", boundary, len);
+		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\nAccess-Control-Allow-Origin: *\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", boundary, len);
 	else
-		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", header, boundary, len);
+		sprintf(n->sendmsg, "HTTP/1.1 206 Partial Content\r\n%s\r\nAccess-Control-Allow-Origin: *\r\nAccept-Ranges: bytes\r\nContent-Type: multipart/byteranges; boundary=%s\r\nContent-Length: %zu\r\n\r\n", header, boundary, len);
 	n->sendIndex = strlen(n->sendmsg);
 }
 
 void httpbeginboundarymultiranges(HTTPNetwork n, const char* contenttype, const char* boundary, size_t size, size_t rangea, size_t rangeb)
 {	//use padding buffer
-	sprintf(&n->sendmsg[n->sendIndex], "--%s\nContent-Type: %s\r\nContent-Range: bytes %zu-%zu/%zu\r\n\r\n", boundary, contenttype, rangea, rangeb, size);
+	sprintf(&n->sendmsg[n->sendIndex], "--%s\nContent-Type: %s\r\nAccess-Control-Allow-Origin: *\r\nContent-Range: bytes %zu-%zu/%zu\r\n\r\n", boundary, contenttype, rangea, rangeb, size);
 	n->sendIndex += strlen(&n->sendmsg[n->sendIndex]);
 }
 
