@@ -1001,9 +1001,9 @@ void httpsetcontent(HTTPNetwork n, const char* header, const char* contenttype, 
 	}
 	if (n->sendmsg != NULL) {
 		if (header == NULL)
-			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", total, contenttype);
 		else
-			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 200 OK\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
 		CPYMEM(&n->sendmsg[l], content, len);
 		n->sendIndex = (l + len);
@@ -1023,9 +1023,9 @@ void httpsetcontentwithcode(HTTPNetwork n, unsigned int code, const char* header
 		char status[512];
 		httpcode(code, status);
 		if (header == NULL)
-			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, total, contenttype);
 		else
-			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, header, total, contenttype);
+			sprintf(n->sendmsg, "HTTP/1.1 %d %s\r\n%s\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nContent-Length: %zu\r\nContent-Type: %s\r\n\r\n", code, status, header, total, contenttype);
 		size_t l = strlen(n->sendmsg);
 		CPYMEM(&n->sendmsg[l], content, len);
 		n->sendIndex = (l + len);
