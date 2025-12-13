@@ -414,6 +414,8 @@ void* httplistenthread(void* arg)
 			}
 		}
 	}
+	for (int i = prememi; i < PREMEMSIZE; i++)
+		FREEMEM(premem[i]);
 	FREEMEM(premem);
 	return NULL;
 }
