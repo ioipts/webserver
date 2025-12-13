@@ -1,6 +1,8 @@
 #include "axishttpsock.h"
 
-#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__APPLE__)
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+#if !defined(MSG_NOSIGNAL)
 #define MSG_NOSIGNAL 0
 #if !defined(__APPLE__)
 #define MSG_DONTWAIT 0
@@ -327,6 +329,9 @@ void* httplistenthread(void* arg)
 					pthread_detach(workerThreadId);
 				}
 #else
+				HTTPProcThread p = inithttpproc(dn, config);
+				std::thread proc(httpprocthread, (void*)p);
+				proc.detach();
 #endif
 			}
 #if defined(_PTHREAD)
@@ -684,7 +689,6 @@ bool httpgetpath(HTTPNetwork n, char* path, size_t len)
 
 bool httpgetauthorization(HTTPNetwork n, char* token, size_t len)
 {
-	bool found = false;
 	char* p = n->buffer;
 	p = strstr(p, "Authorization:");
 	if ((p == NULL) || (p == n->buffer)) return false;
@@ -735,12 +739,12 @@ size_t httpgetranges(HTTPNetwork n, size_t** range, size_t total)
 		r2 = total;
 		while (*c == ' ') c++;
 		if (c[0] == '-') {	//last bytes
-			int ret = sscanf(c, "-%zu", &r2);
+			sscanf(c, "-%zu", &r2);
 			(*range)[i * 2] = (r2 > total) ? 0 : total - r2;
 			(*range)[i * 2 + 1] = total - 1;
 		}
 		else {				//range
-			int ret = sscanf(c, "%zu-%zu", &r1, &r2);
+			sscanf(c, "%zu-%zu", &r1, &r2);
 			(*range)[i * 2] = (r1 > total - 1) ? total - 1 : r1;
 			(*range)[i * 2 + 1] = (r2 > total - 1) ? total - 1 : r2;
 		}
