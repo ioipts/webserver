@@ -73,7 +73,7 @@
  //we do not want the warnings about the old deprecated and unsecure CRT functions 
  //since these examples can be compiled under *nix as well
 #if !defined(_CRT_SECURE_NO_WARNINGS)
-	#define _CRT_SECURE_NO_WARNINGS
+   #define _CRT_SECURE_NO_WARNINGS
 #endif
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define NOMINMAX
@@ -97,6 +97,8 @@
 #define PACKED
 
 #else 
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #if defined(__APPLE__)
 #include <sys/stat.h>

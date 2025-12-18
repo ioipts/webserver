@@ -1,7 +1,5 @@
 #include "axishttpsock.h"
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 #if !defined(MSG_NOSIGNAL)
 #define MSG_NOSIGNAL 0
 #if !defined(__APPLE__)
