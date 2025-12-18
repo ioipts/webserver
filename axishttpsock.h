@@ -72,7 +72,9 @@
  //Windows
  //we do not want the warnings about the old deprecated and unsecure CRT functions 
  //since these examples can be compiled under *nix as well
-#define _CRT_SECURE_NO_WARNINGS
+#if !defined(_CRT_SECURE_NO_WARNINGS)
+	#define _CRT_SECURE_NO_WARNINGS
+#endif
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define NOMINMAX
 #include <winsock2.h>
